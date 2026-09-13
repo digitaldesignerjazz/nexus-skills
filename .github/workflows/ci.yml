@@ -1,0 +1,49 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nexus-skills-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  field-hygiene:
+    name: field-hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Hygiene
+        run: |
+          chmod +x scripts/ci-field-hygiene.sh
+          ./scripts/ci-field-hygiene.sh
+      - name: Skill frontmatter
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path("skills")
+          skills = sorted(p for p in root.glob("*/SKILL.md"))
+          if len(skills) < 8:
+              raise SystemExit(f"expected at least 8 skills, found {len(skills)}")
+          for path in skills:
+              text = path.read_text(encoding="utf-8")
+              if not text.startswith("---\n"):
+                  raise SystemExit(f"{path} must start with frontmatter")
+              end = text.find("\n---\n", 4)
+              if end < 0:
+                  raise SystemExit(f"{path} frontmatter not closed")
+              fm = text[4:end]
+              if "name:" not in fm or "description:" not in fm:
+                  raise SystemExit(f"{path} missing name or description")
+              desc = fm.split("description:", 1)[1].splitlines()[0]
+              if ": " in desc:
+                  raise SystemExit(f"{path} description contains colon-space")
+              print(f"OK      {path}")
+          PY
+      - run: echo "Public field CI. No secrets. GitHub-hosted only."

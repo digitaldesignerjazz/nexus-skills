@@ -1,0 +1,10 @@
+*_state.md
+skilllogin/
+.env
+.env.*
+*.pem
+*.key
+*.seed
+secrets/
+__pycache__/
+*.pyc
